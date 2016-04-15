@@ -269,51 +269,24 @@
                                  orientation = ALAssetOrientationRight;
                          }
 
-                         // task 1
-                         dispatch_group_enter(group);
-                         [library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
-                                  if (error) {
-                                          NSLog(@"FAILED to save Preview picture.");
-                                          photosAlbumError = error;
-                                  } else {
-                                          previewPicturePath = [assetURL absoluteString];
-                                          NSLog(@"previewPicturePath: %@", previewPicturePath);
-                                  }
-                                  dispatch_group_leave(group);
-                          }];
+                        ////Encode Preview Image in base64
+                        UIImage *newPreviewImage = [[UIImage alloc]initWithCGImage:previewImage];
+                        NSData *imageData2 = UIImageJPEGRepresentation(newPreviewImage,0.0);
+                        NSString *base64PreviewImg = [imageData2 base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+                        
+                        dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+                            NSMutableArray *params = [[NSMutableArray alloc] init];
+                            
+                            //////Return Base64 images as an object
+                            [params addObject:base64PreviewImg];
+                            ///Can add some params (final image for example)
+                            
+                            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
+                            [pluginResult setKeepCallbackAsBool:true];
+                            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
+                        });                                 
 
-                         //task 2
-                         dispatch_group_enter(group);
-                         [library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
-                                  if (error) {
-                                          NSLog(@"FAILED to save Original picture.");
-                                          photosAlbumError = error;
-                                  } else {
-                                          originalPicturePath = [assetURL absoluteString];
-                                          NSLog(@"originalPicturePath: %@", originalPicturePath);
-                                  }
-                                  dispatch_group_leave(group);
-                          }];
-
-                         dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-                                NSMutableArray *params = [[NSMutableArray alloc] init];
-                                if (photosAlbumError) {
-                                        // Error returns just one element in the returned array
-                                        NSString * remedy = @"";
-                                        if (-3311 == [photosAlbumError code]) {
-                                                remedy = @"Go to Settings > CodeStudio and allow access to Photos";
-                                        }
-                                        [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
-                                } else {
-                                        // Success returns two elements in the returned array
-                                        [params addObject:originalPicturePath];
-                                        [params addObject:previewPicturePath];
-                                }
-
-                                CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
-                                [pluginResult setKeepCallbackAsBool:true];
-                                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
-                        });
+                         
                  }
          }];
 }
